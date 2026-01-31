@@ -1,0 +1,69 @@
+{% extends 'base.html' %}
+
+{% block title %}Verify OTP{% endblock %}
+
+{% block content %}
+<div class="card p-4" style="width: 100%; max-width: 400px;" x-data="otpForm()">
+    <h3 class="text-center mb-3">Enter OTP</h3>
+
+    <!-- Hidden CSRF token for AJAX -->
+    <input type="hidden" id="csrf_token" value="{{ csrf_token }}">
+
+    <form @submit.prevent="submitOtp">
+        <div class="mb-3">
+            <input type="text" x-model="otp" class="form-control" placeholder="6-digit OTP" required>
+        </div>
+        <button type="submit" class="btn btn-success w-100" :disabled="loading">
+            <span x-show="!loading">Verify OTP</span>
+            <span x-show="loading">
+                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                Verifying...
+            </span>
+        </button>
+    </form>
+
+    <div class="alert alert-danger mt-3" x-show="error" x-text="error"></div>
+</div>
+
+<script>
+function otpForm() {
+    return {
+        otp: '',
+        loading: false,
+        error: '',
+        async submitOtp() {
+            this.loading = true;
+            this.error = '';
+
+            try {
+                const csrfToken = document.getElementById('csrf_token').value;
+
+                const response = await fetch("{% url 'verify' %}", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-CSRFToken": csrfToken
+                    },
+                    body: JSON.stringify({ otp: this.otp })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    // ✅ OTP correct → redirect
+                    window.location.href = "{% url 'home' %}";
+                } else {
+                    // ❌ OTP wrong → show error
+                    this.error = data.error;
+                }
+
+            } catch (err) {
+                this.error = "Something went wrong. Try again.";
+            } finally {
+                this.loading = false;
+            }
+        }
+    }
+}
+</script>
+{% endblock %}
